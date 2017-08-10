@@ -7,7 +7,7 @@ pof_cat <-
 		output_dir = file.path( getwd() ) )
 
 # 2008-2009 only
-pof_cat <- subset( pof_cat , period == "2008-2009" )
+pof_cat <- subset( pof_cat , period == "2008_2009" )
 # download the microdata to your local computer
 stopifnot( nrow( pof_cat ) > 0 )
 

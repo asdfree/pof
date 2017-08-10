@@ -56,7 +56,7 @@ population_totals <-
 pof_design <-
 	postStratify(
 		pre_stratified_design , 
-		~pos_estrato , 
+		~ pos_estrato , 
 		population_totals
 	)
 pof_design <- 

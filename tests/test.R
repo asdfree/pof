@@ -38,7 +38,7 @@ pof_df <- merge( t_morador_s , poststr )
 
 stopifnot( nrow( pof_df ) == nrow( t_morador_s ) )
 
-pre_stratified_df <- 
+pre_stratified_design <- 
 	svydesign(
 		id = ~control , 
 		strata = ~estrato_unico ,
@@ -49,13 +49,13 @@ pre_stratified_df <-
 
 population_totals <- 
 	data.frame(
-		pos_estrato = unique( pre_stratified_df$pos_estrato ) , 
-		Freq = unique( pre_stratified_df$tot_pop ) 
+		pos_estrato = unique( pof_df$pos_estrato ) , 
+		Freq = unique( pof_df$tot_pop ) 
 	)
 
 pof_design <-
 	postStratify(
-		pre_stratified_df , 
+		pre_stratified_design , 
 		~pos_estrato , 
 		population_totals
 	)

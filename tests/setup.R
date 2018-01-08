@@ -11,7 +11,7 @@ pof_cat <-
 # 2008-2009 only
 pof_cat <- subset( pof_cat , period == "2008_2009" )
 # download the microdata to your local computer
-lodown( "pof" , pof_cat )
+
 
 options( survey.lonely.psu = "adjust" )
 

@@ -1,6 +1,8 @@
 # shopping na praia
 # roupa, comida, pede
 # tres havaianas
+library(archive)
+
 dictionary_tf <- tempfile()
 
 dictionary_url <-
@@ -11,7 +13,7 @@ dictionary_url <-
 
 download.file( dictionary_url , dictionary_tf , mode = 'wb' )
 
-dictionary_files <- unzip( dictionary_tf , exdir = tempdir() )
+dictionary_files <- archive_extract( dictionary_tf , dir = tempdir() )
 library(readxl)
 
 dictionary_fn <- file.path( tempdir() , "Dicionários de váriaveis.xls" )

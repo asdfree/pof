@@ -139,7 +139,7 @@ pof_design <-
 		
 		sexo = factor( v0404 , levels = 1:2 , labels = c( 'male' , 'female' ) ) ,
 		
-		urban = as.numeric( tipo_situacao_reg )
+		urban = as.numeric( tipo_situacao_reg == 1 )
 
 	)
 

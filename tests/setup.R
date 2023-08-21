@@ -65,9 +65,7 @@ domicilio_tbl <-
 		fwf_widths( 
 			widths = domicilio_dictionary_df[ , 'length' ] , 
 			col_names = domicilio_dictionary_df[ , 'column_name' ] 
-		) ,
-		col_types = 
-			paste0( ifelse( is.na( domicilio_dictionary_df[ , 'decimals' ] ) , "c" , "d" ) , collapse = '' )
+		)
 	)
 
 domicilio_df <- data.frame( domicilio_tbl )
@@ -82,9 +80,7 @@ morador_tbl <-
 		fwf_widths( 
 			widths = morador_dictionary_df[ , 'length' ] , 
 			col_names = morador_dictionary_df[ , 'column_name' ] 
-		) ,
-		col_types = 
-			paste0( ifelse( is.na( morador_dictionary_df[ , 'decimals' ] ) , "c" , "d" ) , collapse = '' )
+		)
 	)
 
 morador_df <- data.frame( morador_tbl )
@@ -107,16 +103,15 @@ pre_stratified_design <-
 	svydesign(
 		id = ~ cod_upa , 
 		strata = ~ estrato_pof ,
-		weights = ~ peso_final ,
+		weights = ~ peso ,
 		data = pof_df ,
 		nest = TRUE
 	)
 
 population_totals <- 
-	data.frame(
-		pos_estrato = unique( pof_df[ , 'pos_estrato' ] ) , 
-		Freq = unique( pof_df[ , 'total_pessoas' ] ) 
-	)
+	aggregate( peso_final ~ pos_estrato , data = pof_df , sum )
+	
+names( population_totals ) <- c( 'pos_estrato' , 'Freq' )
 
 pof_design <-
 	postStratify(
@@ -132,47 +127,20 @@ pof_design <-
 		
 		one = 1 ,
 		
-		food_security = factor( v6199 , levels = 1:4 , labels = c( 'food secure' , 'mild' , 'moderate' , 'severe' ) )
-	)
+		food_security = factor( v6199 , levels = 1:4 , labels = c( 'food secure' , 'mild' , 'moderate' , 'severe' ) ) ,
 	
-		
-pof_design <- 
-	update(
-		pof_design , 
-		
-		one = 1 ,
-		
-		# centimeters instead of meters
-		altura_imputado = altura_imputado / 100 ,
-		
 		age_categories =
 			factor( 
-				1 + findInterval( idade_anos , 
+				1 + findInterval( v0403 , 
 					c( 20 , 25 , 30 , 35 , 45 , 55 , 65 , 75 ) ) ,
 				levels = 1:9 , labels = c( "under 20" , "20-24" , "25-29" ,
 				"30-34" , "35-44" , "45-54" , "55-64" , "65-74" , "75+" )
 			) ,
 		
-		# create a body mass index (bmi) variable, excluding babies (who have altura_imputado==0)			
-		body_mass_index = ifelse( altura_imputado == 0 , 0 , peso_imputado / ( altura_imputado ^ 2 ) ) ,
+		sexo = factor( v0404 , levels = 1:2 , labels = c( 'male' , 'female' ) ) ,
 		
-		sexo = ifelse( cod_sexo == '01' , "masculino" , ifelse( cod_sexo == '02' , "feminino" , NA ) )
-		
-		
-	)
+		urban = as.numeric( tipo_situacao_reg )
 
-pof_design <-
-	transform(
-		pof_design ,
-		
-		# individuals with a low bmi - underweight
-		underweight = ifelse( body_mass_index < 18.5 , 1 , 0 ) ,
-		
-		# individuals with a high bmi - overweight
-		overweight = ifelse( body_mass_index >= 25 , 1 , 0 ) ,
-		
-		# individuals with a very high bmi - obese
-		obese = ifelse( body_mass_index >= 30 , 1 , 0 )
 	)
 
 sum( weights( pof_design , "sampling" ) != 0 )
@@ -181,37 +149,37 @@ svyby( ~ one , ~ sexo , pof_design , unwtd.count )
 svytotal( ~ one , pof_design )
 
 svyby( ~ one , ~ sexo , pof_design , svytotal )
-svymean( ~ body_mass_index , pof_design , na.rm = TRUE )
+svymean( ~ renda_total , pof_design )
 
-svyby( ~ body_mass_index , ~ sexo , pof_design , svymean , na.rm = TRUE )
+svyby( ~ renda_total , ~ sexo , pof_design , svymean )
 svymean( ~ age_categories , pof_design )
 
 svyby( ~ age_categories , ~ sexo , pof_design , svymean )
-svytotal( ~ body_mass_index , pof_design , na.rm = TRUE )
+svytotal( ~ renda_total , pof_design )
 
-svyby( ~ body_mass_index , ~ sexo , pof_design , svytotal , na.rm = TRUE )
+svyby( ~ renda_total , ~ sexo , pof_design , svytotal )
 svytotal( ~ age_categories , pof_design )
 
 svyby( ~ age_categories , ~ sexo , pof_design , svytotal )
-svyquantile( ~ body_mass_index , pof_design , 0.5 , na.rm = TRUE )
+svyquantile( ~ renda_total , pof_design , 0.5 )
 
 svyby( 
-	~ body_mass_index , 
+	~ renda_total , 
 	~ sexo , 
 	pof_design , 
 	svyquantile , 
 	0.5 ,
-	ci = TRUE , na.rm = TRUE
+	ci = TRUE 
 )
 svyratio( 
-	numerator = ~ peso_imputado , 
-	denominator = ~ altura_imputado , 
+	numerator = ~ renda_total , 
+	denominator = ~ anos_estudo , 
 	pof_design ,
 	na.rm = TRUE
 )
-sub_pof_design <- subset( pof_design , underweight == 1 )
-svymean( ~ body_mass_index , sub_pof_design , na.rm = TRUE )
-this_result <- svymean( ~ body_mass_index , pof_design , na.rm = TRUE )
+sub_pof_design <- subset( pof_design , v0409 > 0 )
+svymean( ~ renda_total , sub_pof_design )
+this_result <- svymean( ~ renda_total , pof_design )
 
 coef( this_result )
 SE( this_result )
@@ -220,11 +188,10 @@ cv( this_result )
 
 grouped_result <-
 	svyby( 
-		~ body_mass_index , 
+		~ renda_total , 
 		~ sexo , 
 		pof_design , 
-		svymean ,
-		na.rm = TRUE 
+		svymean 
 	)
 	
 coef( grouped_result )
@@ -232,22 +199,22 @@ SE( grouped_result )
 confint( grouped_result )
 cv( grouped_result )
 degf( pof_design )
-svyvar( ~ body_mass_index , pof_design , na.rm = TRUE )
+svyvar( ~ renda_total , pof_design )
 # SRS without replacement
-svymean( ~ body_mass_index , pof_design , na.rm = TRUE , deff = TRUE )
+svymean( ~ renda_total , pof_design , deff = TRUE )
 
 # SRS with replacement
-svymean( ~ body_mass_index , pof_design , na.rm = TRUE , deff = "replace" )
-svyciprop( ~ obese , pof_design ,
-	method = "likelihood" , na.rm = TRUE )
-svyttest( body_mass_index ~ obese , pof_design )
+svymean( ~ renda_total , pof_design , deff = "replace" )
+svyciprop( ~ urban , pof_design ,
+	method = "likelihood" )
+svyttest( renda_total ~ urban , pof_design )
 svychisq( 
-	~ obese + age_categories , 
+	~ urban + age_categories , 
 	pof_design 
 )
 glm_result <- 
 	svyglm( 
-		body_mass_index ~ obese + age_categories , 
+		renda_total ~ urban + age_categories , 
 		pof_design 
 	)
 
@@ -259,12 +226,12 @@ stopifnot( all.equal( round( coef( person_level_food_security ) , 2 ) , c( 0.59 
 library(convey)
 pof_design <- convey_prep( pof_design )
 
-svygini( ~ vd4020n , pof_design , na.rm = TRUE )
+svygini( ~ renda_total , pof_design , na.rm = TRUE )
 library(srvyr)
 pof_srvyr_design <- as_survey( pof_design )
 pof_srvyr_design %>%
-	summarize( mean = survey_mean( body_mass_index , na.rm = TRUE ) )
+	summarize( mean = survey_mean( renda_total ) )
 
 pof_srvyr_design %>%
 	group_by( sexo ) %>%
-	summarize( mean = survey_mean( body_mass_index , na.rm = TRUE ) )
+	summarize( mean = survey_mean( renda_total ) )

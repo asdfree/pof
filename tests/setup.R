@@ -18,16 +18,24 @@ library(readxl)
 
 dictionary_fn <- file.path( tempdir() , "Dicionários de váriaveis.xls" )
 
-dictionary_tbl <- read_excel( dictionary_fn , sheet = "Morador" , skip = 3 )
+domicilio_dictionary_tbl <- read_excel( dictionary_fn , sheet = "Domicílio" , skip = 3 )
 
-dictionary_df <- data.frame( dictionary_tbl )
+domicilio_dictionary_df <- data.frame( domicilio_dictionary_tbl )
 
-names( dictionary_df ) <- c( 'position' , 'length' , 'decimals' , 'column_name' , 'description' , 'variable_labels' )
+names( domicilio_dictionary_df ) <- c( 'position' , 'length' , 'decimals' , 'column_name' , 'description' , 'variable_labels' )
 
-dictionary_df[ c( 'position' , 'length' , 'decimals' ) ] <- sapply( dictionary_df[ c( 'position' , 'length' , 'decimals' ) ] , as.integer )
+domicilio_dictionary_df[ c( 'position' , 'length' , 'decimals' ) ] <- sapply( domicilio_dictionary_df[ c( 'position' , 'length' , 'decimals' ) ] , as.integer )
 
-dictionary_df <- subset( dictionary_df , !is.na( position ) )
+domicilio_dictionary_df <- subset( domicilio_dictionary_df , !is.na( position ) )
+morador_dictionary_tbl <- read_excel( dictionary_fn , sheet = "Morador" , skip = 3 )
 
+morador_dictionary_df <- data.frame( morador_dictionary_tbl )
+
+names( morador_dictionary_df ) <- c( 'position' , 'length' , 'decimals' , 'column_name' , 'description' , 'variable_labels' )
+
+morador_dictionary_df[ c( 'position' , 'length' , 'decimals' ) ] <- sapply( morador_dictionary_df[ c( 'position' , 'length' , 'decimals' ) ] , as.integer )
+
+morador_dictionary_df <- subset( morador_dictionary_df , !is.na( position ) )
 
 post_stratification_fn <- file.path( tempdir() , "Pos_estratos_totais.xlsx" )
 
@@ -47,26 +55,45 @@ this_url <-
 download.file( this_url , this_tf , mode = 'wb' )
 
 unzipped_files <- unzip( this_tf , exdir = tempdir() )
-
-morador_fn <- grep( 'MORADOR\.txt$' , unzipped_files , value = TRUE )
 library(readr)
+
+domicilio_fn <- grep( 'DOMICILIO\\.txt$' , unzipped_files , value = TRUE )
+
+domicilio_tbl <-
+	read_fwf(
+		domicilio_fn ,
+		fwf_widths( 
+			widths = domicilio_dictionary_df[ , 'length' ] , 
+			col_names = domicilio_dictionary_df[ , 'column_name' ] 
+		) ,
+		col_types = 
+			paste0( ifelse( is.na( domicilio_dictionary_df[ , 'decimals' ] ) , "c" , "d" ) , collapse = '' )
+	)
+
+domicilio_df <- data.frame( domicilio_tbl )
+
+names( domicilio_df ) <- tolower( names( domicilio_df ) )
+
+morador_fn <- grep( 'MORADOR\\.txt$' , unzipped_files , value = TRUE )
 
 morador_tbl <-
 	read_fwf(
 		morador_fn ,
 		fwf_widths( 
-			widths = dictionary_df[ , 'length' ] , 
-			col_names = dictionary_df[ , 'column_name' ] 
+			widths = morador_dictionary_df[ , 'length' ] , 
+			col_names = morador_dictionary_df[ , 'column_name' ] 
 		) ,
 		col_types = 
-			paste0( ifelse( is.na( dictionary_df[ , 'decimals' ] ) , "c" , "d" ) , collapse = '' )
+			paste0( ifelse( is.na( morador_dictionary_df[ , 'decimals' ] ) , "c" , "d" ) , collapse = '' )
 	)
 
 morador_df <- data.frame( morador_tbl )
 
 names( morador_df ) <- tolower( names( morador_df ) )
 
-pof_df <- merge( morador_df , post_stratification_df )
+dom_mor_df <- merge( domicilio_df[ c( 'cod_upa' , 'num_dom' , 'v6199' ) ] , morador_df )
+
+pof_df <- merge( dom_mor_df , post_stratification_df )
 
 stopifnot( nrow( pof_df ) == nrow( morador_df ) )
 # pof_fn <- file.path( path.expand( "~" ) , "POF" , "this_file.rds" )
@@ -99,6 +126,16 @@ pof_design <-
 	)
 
 
+pof_design <-
+	update(
+		pof_design ,
+		
+		one = 1 ,
+		
+		food_security = factor( v6199 , levels = 1:4 , labels = c( 'food secure' , 'mild' , 'moderate' , 'severe' ) )
+	)
+	
+		
 pof_design <- 
 	update(
 		pof_design , 
@@ -215,32 +252,9 @@ glm_result <-
 	)
 
 summary( glm_result )
-nationwide_adult_population <- svytotal( ~ pia , pof_design , na.rm = TRUE )
+person_level_food_security <- svymean( ~ food_security , pof_design , na.rm = TRUE )
 	
-stopifnot( round( coef( nationwide_adult_population ) / 1000000 , 3 ) == 174.228 )
-stopifnot( round( cv( nationwide_adult_population ) / 1000000 , 3 ) == 0 )
-	
-nationwide_labor_force <- svytotal( ~ pea_c , pof_design , na.rm = TRUE )
-
-stopifnot( round( coef( nationwide_labor_force ) / 1000000 , 3 ) == 107.257 )
-stopifnot( round( cv( nationwide_labor_force ) * 100 , 1 ) == 0.2 )
-	
-nationwide_employed <- svytotal( ~ ocup_c , pof_design , na.rm = TRUE )
-
-stopifnot( round( coef( nationwide_employed ) / 1000000 , 3 ) == 97.825 )
-stopifnot( round( cv( nationwide_employed ) * 100 , 1 ) == 0.2 )
-	
-nationwide_unemployed <- svytotal( ~ desocup30 , pof_design , na.rm = TRUE )
-
-stopifnot( round( coef( nationwide_unemployed ) / 1000000 , 3 ) == 9.432 )
-stopifnot( round( cv( nationwide_unemployed ) * 100 , 1 ) == 1.2 )
-	
-nationwide_not_in_labor_force <-
-	svytotal( ~ as.numeric( pia & !pea_c ) , pof_design , na.rm = TRUE )
-
-stopifnot( round( coef( nationwide_not_in_labor_force ) / 1000000 , 3 ) == 66.972 )
-stopifnot( round( cv( nationwide_not_in_labor_force ) * 100 , 1 ) == 0.3 )
-	
+stopifnot( all.equal( round( coef( person_level_food_security ) , 2 ) , c( 0.59 , 0.27 , 0.09 , 0.05 ) , check.attributes = FALSE ) )
 
 library(convey)
 pof_design <- convey_prep( pof_design )

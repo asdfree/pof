@@ -22,18 +22,22 @@ domicilio_dictionary_tbl <- read_excel( dictionary_fn , sheet = "Domicílio" , s
 
 domicilio_dictionary_df <- data.frame( domicilio_dictionary_tbl )
 
-names( domicilio_dictionary_df ) <- c( 'position' , 'length' , 'decimals' , 'column_name' , 'description' , 'variable_labels' )
+names( domicilio_dictionary_df ) <-
+	c( 'position' , 'length' , 'decimals' , 'column_name' , 'description' , 'variable_labels' )
 
-domicilio_dictionary_df[ c( 'position' , 'length' , 'decimals' ) ] <- sapply( domicilio_dictionary_df[ c( 'position' , 'length' , 'decimals' ) ] , as.integer )
+domicilio_dictionary_df[ c( 'position' , 'length' , 'decimals' ) ] <-
+	sapply( domicilio_dictionary_df[ c( 'position' , 'length' , 'decimals' ) ] , as.integer )
 
 domicilio_dictionary_df <- subset( domicilio_dictionary_df , !is.na( position ) )
 morador_dictionary_tbl <- read_excel( dictionary_fn , sheet = "Morador" , skip = 3 )
 
 morador_dictionary_df <- data.frame( morador_dictionary_tbl )
 
-names( morador_dictionary_df ) <- c( 'position' , 'length' , 'decimals' , 'column_name' , 'description' , 'variable_labels' )
+names( morador_dictionary_df ) <-
+	c( 'position' , 'length' , 'decimals' , 'column_name' , 'description' , 'variable_labels' )
 
-morador_dictionary_df[ c( 'position' , 'length' , 'decimals' ) ] <- sapply( morador_dictionary_df[ c( 'position' , 'length' , 'decimals' ) ] , as.integer )
+morador_dictionary_df[ c( 'position' , 'length' , 'decimals' ) ] <-
+	sapply( morador_dictionary_df[ c( 'position' , 'length' , 'decimals' ) ] , as.integer )
 
 morador_dictionary_df <- subset( morador_dictionary_df , !is.na( position ) )
 
@@ -43,7 +47,8 @@ post_stratification_tbl <- read_excel( post_stratification_fn , skip = 5 )
 	
 post_stratification_df <- data.frame( post_stratification_tbl )
 
-names( post_stratification_df ) <- c( 'estrato_pof' , 'pos_estrato' , 'total_pessoas' , 'uf' , 'cod_upa' )
+names( post_stratification_df ) <-
+	c( 'estrato_pof' , 'pos_estrato' , 'total_pessoas' , 'uf' , 'cod_upa' )
 this_tf <- tempfile()
 
 this_url <-
@@ -127,17 +132,24 @@ pof_design <-
 		
 		one = 1 ,
 		
-		food_security = factor( v6199 , levels = 1:4 , labels = c( 'food secure' , 'mild' , 'moderate' , 'severe' ) ) ,
+		food_security =
+			factor( 
+				v6199 , 
+				levels = 1:4 , 
+				labels = c( 'food secure' , 'mild' , 'moderate' , 'severe' ) 
+			) ,
 	
 		age_categories =
 			factor( 
 				1 + findInterval( v0403 , 
 					c( 20 , 25 , 30 , 35 , 45 , 55 , 65 , 75 ) ) ,
-				levels = 1:9 , labels = c( "under 20" , "20-24" , "25-29" ,
-				"30-34" , "35-44" , "45-54" , "55-64" , "65-74" , "75+" )
+				levels = 1:9 , 
+				labels =
+					c( "under 20" , "20-24" , "25-29" , "30-34" , "35-44" , 
+					"45-54" , "55-64" , "65-74" , "75+" )
 			) ,
 		
-		sexo = factor( v0404 , levels = 1:2 , labels = c( 'male' , 'female' ) ) ,
+		sex = factor( v0404 , levels = 1:2 , labels = c( 'male' , 'female' ) ) ,
 		
 		urban = as.numeric( tipo_situacao_reg == 1 )
 
@@ -145,27 +157,27 @@ pof_design <-
 
 sum( weights( pof_design , "sampling" ) != 0 )
 
-svyby( ~ one , ~ sexo , pof_design , unwtd.count )
+svyby( ~ one , ~ sex , pof_design , unwtd.count )
 svytotal( ~ one , pof_design )
 
-svyby( ~ one , ~ sexo , pof_design , svytotal )
+svyby( ~ one , ~ sex , pof_design , svytotal )
 svymean( ~ renda_total , pof_design )
 
-svyby( ~ renda_total , ~ sexo , pof_design , svymean )
+svyby( ~ renda_total , ~ sex , pof_design , svymean )
 svymean( ~ age_categories , pof_design )
 
-svyby( ~ age_categories , ~ sexo , pof_design , svymean )
+svyby( ~ age_categories , ~ sex , pof_design , svymean )
 svytotal( ~ renda_total , pof_design )
 
-svyby( ~ renda_total , ~ sexo , pof_design , svytotal )
+svyby( ~ renda_total , ~ sex , pof_design , svytotal )
 svytotal( ~ age_categories , pof_design )
 
-svyby( ~ age_categories , ~ sexo , pof_design , svytotal )
+svyby( ~ age_categories , ~ sex , pof_design , svytotal )
 svyquantile( ~ renda_total , pof_design , 0.5 )
 
 svyby( 
 	~ renda_total , 
-	~ sexo , 
+	~ sex , 
 	pof_design , 
 	svyquantile , 
 	0.5 ,
@@ -189,7 +201,7 @@ cv( this_result )
 grouped_result <-
 	svyby( 
 		~ renda_total , 
-		~ sexo , 
+		~ sex , 
 		pof_design , 
 		svymean 
 	)
@@ -221,8 +233,13 @@ glm_result <-
 summary( glm_result )
 person_level_food_security <- svymean( ~ food_security , pof_design , na.rm = TRUE )
 	
-stopifnot( all.equal( round( coef( person_level_food_security ) , 2 ) , c( 0.59 , 0.27 , 0.09 , 0.05 ) , check.attributes = FALSE ) )
-
+stopifnot(
+	all.equal(
+		round( coef( person_level_food_security ) , 2 ) , 
+		c( 0.59 , 0.27 , 0.09 , 0.05 ) , 
+		check.attributes = FALSE 
+	)
+)
 library(convey)
 pof_design <- convey_prep( pof_design )
 
@@ -233,5 +250,5 @@ pof_srvyr_design %>%
 	summarize( mean = survey_mean( renda_total ) )
 
 pof_srvyr_design %>%
-	group_by( sexo ) %>%
+	group_by( sex ) %>%
 	summarize( mean = survey_mean( renda_total ) )

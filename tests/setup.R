@@ -100,9 +100,9 @@ stopifnot( nrow( pof_df ) == nrow( morador_df ) )
 # pof_fn <- file.path( path.expand( "~" ) , "POF" , "this_file.rds" )
 # saveRDS( pof_df , file = pof_fn , compress = FALSE )
 # pof_df <- readRDS( pof_fn )
-options( survey.lonely.psu = "adjust" )
-
 library(survey)
+
+options( survey.lonely.psu = "adjust" )
 
 pre_stratified_design <- 
 	svydesign(
